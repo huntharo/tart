@@ -9,7 +9,12 @@ class FullFledgedVNC: VNC {
   init(virtualMachine: VZVirtualMachine) {
     password = Array(PassphraseGenerator().prefix(4)).joined(separator: "-")
     let securityConfiguration = Dynamic._VZVNCAuthenticationSecurityConfiguration(password: password)
-    vnc = Dynamic._VZVNCServer(port: 0, queue: DispatchQueue.global(),
+    // Use the main queue rather than the concurrent DispatchQueue.global().
+    // The server likely expects a serial queue, and the VZVirtualMachine it
+    // attaches to is bound to the main queue (created via init(configuration:)),
+    // so this keeps VNC callbacks on the same queue as the VM. Lume does the same.
+    // See https://github.com/openai/tart/issues/1382
+    vnc = Dynamic._VZVNCServer(port: 0, queue: DispatchQueue.main,
                                securityConfiguration: securityConfiguration)
     vnc.virtualMachine = virtualMachine
     vnc.start()
